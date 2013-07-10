@@ -1,3 +1,5 @@
+import sun.misc.Regexp;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
@@ -10,6 +12,8 @@ import java.awt.event.ActionListener;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created with IntelliJ IDEA.
@@ -24,6 +28,9 @@ public class View extends JFrame{
 	private int codeCount = 0;
 	private int commentCount = 0;
 	private int blankCount = 0;
+	private JTextField nameFilter;
+	private JTextPane output;
+	private Pattern[] ps;
 	public View(){
 		super("jLineCounter");
 		JMenuBar menuBar=new JMenuBar();
@@ -64,6 +71,16 @@ public class View extends JFrame{
 		tree = new JTree();
 		JScrollPane jp=new JScrollPane(tree);
 		splitPane.add(jp,JSplitPane.LEFT);
+		JPanel right=new JPanel();
+		splitPane.add(right, JSplitPane.RIGHT);
+		right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
+		nameFilter=new JTextField();
+		nameFilter.setText("*.as,*.cpp,*.c");
+		right.add(nameFilter);
+		nameFilter.setMaximumSize(new Dimension(nameFilter.getMaximumSize().width,nameFilter.getPreferredSize().height));
+		output=new JTextPane();
+		right.add(output);
+		output.setText("drop files to left panel");
 
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE,new DropTargetAdapter() {
 			@Override
@@ -86,6 +103,13 @@ public class View extends JFrame{
 
 	private void dofile(java.util.List<File> list){
 		totalLineCount=codeCount=commentCount=blankCount=0;
+		String filter=nameFilter.getText();
+		String[] filters= filter.split(",");
+		ps=new Pattern[filters.length];
+		for(int i=0;i<filters.length;i++){
+			Pattern p=Pattern.compile(filters[i].replace(".","[.]").replace("*",".*"));
+			ps[i]=p;
+		}
 		for (File file:list){
 			countFiles(file);
 		}
@@ -98,7 +122,16 @@ public class View extends JFrame{
 				countFiles(f);
 			}
 		}else{
-			countFile(file);
+			String name=file.getName();
+			boolean flag=false;
+			if(ps.length==0)flag=true;
+			for(Pattern p:ps){
+				Matcher m=p.matcher(name);
+				if(m.matches()){
+					flag=true;
+				}
+			}
+			if(flag)countFile(file);
 		}
 
 	}
